@@ -500,3 +500,138 @@ class DatabaseManager:
             records.append(record)
         
         return records
+    
+    # 统计相关方法
+    def get_yearly_stats(self) -> List[Dict]:
+        """获取年度统计"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT 
+                substr(合同签字日期, 1, 4) as year,
+                COUNT(*) as count,
+                SUM(合同额) as total_amount,
+                SUM(到款金额) as received_amount
+            FROM contracts
+            WHERE 合同签字日期 IS NOT NULL AND 合同签字日期 != ''
+            GROUP BY substr(合同签字日期, 1, 4)
+            ORDER BY year DESC
+        ''')
+        
+        rows = cursor.fetchall()
+        conn.close()
+        
+        stats = []
+        for row in rows:
+            stats.append({
+                'year': row['year'],
+                'count': row['count'],
+                'total_amount': row['total_amount'] or 0,
+                'received_amount': row['received_amount'] or 0
+            })
+        
+        return stats
+    
+    def get_region_stats(self, year: Optional[str] = None) -> List[Dict]:
+        """获取区域统计"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        
+        if year:
+            cursor.execute('''
+                SELECT 
+                    区域 as region,
+                    COUNT(*) as count,
+                    SUM(合同额) as total_amount
+                FROM contracts
+                WHERE 区域 IS NOT NULL AND 区域 != ''
+                    AND 合同签字日期 LIKE ?
+                GROUP BY 区域
+                ORDER BY total_amount DESC
+            ''', (f'{year}%',))
+        else:
+            cursor.execute('''
+                SELECT 
+                    区域 as region,
+                    COUNT(*) as count,
+                    SUM(合同额) as total_amount
+                FROM contracts
+                WHERE 区域 IS NOT NULL AND 区域 != ''
+                GROUP BY 区域
+                ORDER BY total_amount DESC
+            ''')
+        
+        rows = cursor.fetchall()
+        conn.close()
+        
+        stats = []
+        for row in rows:
+            stats.append({
+                'region': row['region'],
+                'count': row['count'],
+                'total_amount': row['total_amount'] or 0
+            })
+        
+        return stats
+    
+    def get_salesperson_stats(self, year: Optional[str] = None) -> List[Dict]:
+        """获取销售负责人统计"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        
+        if year:
+            cursor.execute('''
+                SELECT 
+                    销售负责人 as salesperson,
+                    COUNT(*) as count,
+                    SUM(合同额) as total_amount
+                FROM contracts
+                WHERE 销售负责人 IS NOT NULL AND 销售负责人 != ''
+                    AND 合同签字日期 LIKE ?
+                GROUP BY 销售负责人
+                ORDER BY total_amount DESC
+            ''', (f'{year}%',))
+        else:
+            cursor.execute('''
+                SELECT 
+                    销售负责人 as salesperson,
+                    COUNT(*) as count,
+                    SUM(合同额) as total_amount
+                FROM contracts
+                WHERE 销售负责人 IS NOT NULL AND 销售负责人 != ''
+                GROUP BY 销售负责人
+                ORDER BY total_amount DESC
+            ''')
+        
+        rows = cursor.fetchall()
+        conn.close()
+        
+        stats = []
+        for row in rows:
+            stats.append({
+                'salesperson': row['salesperson'],
+                'count': row['count'],
+                'total_amount': row['total_amount'] or 0
+            })
+        
+        return stats
+    
+    def get_years_with_receivables(self) -> List[str]:
+        """获取有应收账款的年份列表"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT DISTINCT substr(合同签字日期, 1, 4) as year
+            FROM contracts
+            WHERE 应收账款 > 0
+                AND 合同签字日期 IS NOT NULL
+                AND 合同签字日期 != ''
+            ORDER BY year DESC
+        ''')
+        
+        years = [row['year'] for row in cursor.fetchall()]
+        conn.close()
+        
+        return years
