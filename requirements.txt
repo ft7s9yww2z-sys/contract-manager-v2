@@ -1,0 +1,15 @@
+# 合同管理系统 V2.0 依赖
+
+# UI 框架
+customtkinter>=5.2.0
+
+# 数据处理
+openpyxl>=3.0.0
+pandas>=2.0.0
+
+# 图表库
+plotly>=5.18.0
+kaleido>=0.2.1
+
+# 打包工具
+pyinstaller>=6.0.0
