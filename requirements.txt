@@ -3,6 +3,9 @@
 # UI 框架
 customtkinter>=5.2.0
 
+# 日期选择器
+tkcalendar>=1.6.1
+
 # 数据处理
 openpyxl>=3.0.0
 pandas>=2.0.0
