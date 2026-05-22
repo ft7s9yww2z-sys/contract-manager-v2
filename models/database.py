@@ -81,10 +81,10 @@ class DatabaseManager:
             ''')
             
             # 创建索引以提升查询性能
-            cursor.execute('CREATE INDEX idx_contract_no ON contracts(合同编号)')
-            cursor.execute('CREATE INDEX idx_salesperson ON contracts(销售负责人)')
-            cursor.execute('CREATE INDEX idx_region ON contracts(区域)')
-            cursor.execute('CREATE INDEX idx_end_date ON contracts(合同终止日期)')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_contract_no ON contracts(合同编号)')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_salesperson ON contracts(销售负责人)')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_region ON contracts(区域)')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_end_date ON contracts(合同终止日期)')
         else:
             # 升级数据库 - 添加缺失字段
             self._upgrade_database(cursor, columns)
@@ -109,7 +109,7 @@ class DatabaseManager:
                     创建时间 TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             ''')
-            cursor.execute('CREATE INDEX idx_invoice_contract ON invoices_new(合同号)')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_invoice_contract ON invoices_new(合同号)')
         
         # 创建催款记录表
         cursor.execute('''
@@ -125,7 +125,7 @@ class DatabaseManager:
                 FOREIGN KEY (合同编号) REFERENCES contracts(合同编号)
             )
         ''')
-        cursor.execute('CREATE INDEX idx_collection_contract ON collection_records(合同编号)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_collection_contract ON collection_records(合同编号)')
         
         conn.commit()
         conn.close()
