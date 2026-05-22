@@ -268,8 +268,8 @@ class ContractManagerApp(ctk.CTk):
                        font=('Microsoft YaHei UI', 11, 'bold'))
         style.map('Custom.Treeview', background=[('selected', '#3498db')])
         
-        # 合同列表显示所有29个字段
-        columns = ['序号', '下单日期', '合同编号', '项目代码', '是否变更', '合同评审日期',
+        # 合同列表显示所有29个字段，第一列为隐藏的 id
+        columns = ['#id', '序号', '下单日期', '合同编号', '项目代码', '是否变更', '合同评审日期',
                   '合同签字日期', 'crm日期', '合同名称', '对方单位名称', '区域', '销售负责人',
                   '参考金额', '合同额', '联系人', '联系电话', '合同内容', '到款情况',
                   '合同起始日期', '合同终止日期', '开票日期', '开票金额', '开票余额',
@@ -287,6 +287,9 @@ class ContractManagerApp(ctk.CTk):
         for col in columns:
             self.contract_tree.heading(col, text=col, command=lambda c=col: self._sort_contract_tree(c))
             self.contract_tree.column(col, width=100, anchor='center')
+        
+        # 隐藏 id 列
+        self.contract_tree.column('#id', width=0, stretch=False)
         
         # 调整部分列宽
         self.contract_tree.column('合同名称', width=150)
@@ -360,10 +363,12 @@ class ContractManagerApp(ctk.CTk):
             return
         
         item = self.contract_tree.item(selection[0])
-        contract_no = item['values'][0]
+        # id 在第 0 列（隐藏列）
+        contract_id = item['values'][0]
+        contract_no = item['values'][3]  # 合同编号在第 3 列（索引为 3）
         
         # 获取合同详情
-        contract = self.db.get_contract_by_no(contract_no)
+        contract = self.db.get_contract_by_id(contract_id)
         if not contract:
             messagebox.showerror("错误", "合同不存在")
             return
@@ -386,10 +391,12 @@ class ContractManagerApp(ctk.CTk):
             return
         
         item = self.contract_tree.item(selection[0])
-        contract_no = item['values'][0]
+        # id 在第 0 列（隐藏列）
+        contract_id = item['values'][0]
+        contract_no = item['values'][3]  # 合同编号在第 3 列（索引为 3）
         
         if messagebox.askyesno("确认删除", f"确定要删除合同 {contract_no} 吗？\n此操作不可恢复！"):
-            if self.db.delete_contract(contract_no):
+            if self.db.delete_contract_by_id(contract_id):
                 messagebox.showinfo("成功", "合同已删除")
                 self._load_initial_data()
             else:
@@ -1007,18 +1014,91 @@ class ContractManagerApp(ctk.CTk):
         )
         title.pack(side='left')
         
-        # 统计表格
-        table_frame = ctk.CTkFrame(self.content_area, fg_color='white', corner_radius=10)
-        table_frame.pack(fill='both', expand=True, padx=20, pady=(0, 20))
+        # 图表区域
+        charts_frame = ctk.CTkFrame(self.content_area, fg_color='transparent')
+        charts_frame.pack(fill='both', expand=True, padx=20, pady=(0, 20))
         
+        # 获取年度统计数据
         stats = self.db.get_yearly_stats()
         
-        # TODO: 实现年度统计图表
-        ctk.CTkLabel(
-            table_frame,
-            text="年度统计图表（开发中）",
-            font=ctk.CTkFont(size=16)
-        ).pack(pady=50)
+        if not stats:
+            ctk.CTkLabel(
+                charts_frame,
+                text="暂无数据",
+                font=ctk.CTkFont(size=16),
+                text_color='#7f8c8d'
+            ).pack(pady=50)
+            return
+        
+        # 创建图表
+        years = [s['year'] for s in stats]
+        counts = [s['count'] for s in stats]
+        amounts = [s['total_amount'] for s in stats]
+        received = [s['received_amount'] for s in stats]
+        
+        # 创建两个子图
+        fig = make_subplots(
+            rows=1, cols=2,
+            subplot_titles=('年度合同数量', '年度合同金额'),
+            specs=[[{'type': 'bar'}, {'type': 'bar'}]]
+        )
+        
+        # 合同数量柱状图
+        fig.add_trace(
+            go.Bar(
+                x=years,
+                y=counts,
+                name='合同数量',
+                marker_color='#3498db',
+                text=counts,
+                textposition='outside'
+            ),
+            row=1, col=1
+        )
+        
+        # 合同金额和到款金额柱状图
+        fig.add_trace(
+            go.Bar(
+                x=years,
+                y=amounts,
+                name='合同额',
+                marker_color='#2ecc71',
+                text=[f'¥{a:,.0f}' for a in amounts],
+                textposition='outside'
+            ),
+            row=1, col=2
+        )
+        
+        fig.add_trace(
+            go.Bar(
+                x=years,
+                y=received,
+                name='到款金额',
+                marker_color='#e74c3c',
+                text=[f'¥{r:,.0f}' for r in received],
+                textposition='outside'
+            ),
+            row=1, col=2
+        )
+        
+        fig.update_layout(
+            height=500,
+            showlegend=True,
+            barmode='group',
+            plot_bgcolor='white',
+            paper_bgcolor='white'
+        )
+        
+        fig.update_xaxes(title_text='年份')
+        fig.update_yaxes(title_text='数量', row=1, col=1)
+        fig.update_yaxes(title_text='金额（元）', row=1, col=2)
+        
+        # 保存图表
+        chart_file = os.path.join(os.path.dirname(__file__), 'yearly_stats_chart.html')
+        fig.write_html(chart_file)
+        
+        # 显示图表
+        self._show_chart_in_window(charts_frame, chart_file)
     
     def _show_region_stats_tab(self):
         """显示区域统计标签页"""
@@ -1390,9 +1470,10 @@ class ContractManagerApp(ctk.CTk):
         
         for contract in page_contracts:
             self.contract_tree.insert('', 'end', values=(
+                contract.id or 0,  # 隐藏的 id 列
                 contract.序号 or '',
                 contract.下单日期 or '',
-                contract.合同编号,
+                contract.合同编号 or '',
                 contract.项目代码 or '',
                 contract.是否变更 or '',
                 contract.合同评审日期 or '',

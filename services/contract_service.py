@@ -91,9 +91,10 @@ class ContractService:
                         if idx < len(headers):
                             data[headers[idx]] = value
                     
-                    # 检查合同编号
-                    if not data.get('合同编号'):
-                        errors.append(f"第{row_idx}行: 合同编号为空")
+                    # 检查是否至少有一个字段不为空
+                    has_data = any(value is not None and str(value).strip() != '' for value in data.values())
+                    if not has_data:
+                        errors.append(f"第{row_idx}行: 所有字段都为空")
                         fail_count += 1
                         continue
                     

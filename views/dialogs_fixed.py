@@ -131,7 +131,7 @@ class ContractDialog(ctk.CTkToplevel):
                         field_frame,
                         values=self.regions,
                         font=ctk.CTkFont(size=12),
-                        width=300
+                        width=500
                     )
                     entry.set(str(value) if value else '')
                 elif field == '销售负责人':
@@ -139,7 +139,7 @@ class ContractDialog(ctk.CTkToplevel):
                         field_frame,
                         values=self.salespersons,
                         font=ctk.CTkFont(size=12),
-                        width=300
+                        width=500
                     )
                     entry.set(str(value) if value else '')
                 elif field == '是否变更':
@@ -147,7 +147,7 @@ class ContractDialog(ctk.CTkToplevel):
                         field_frame,
                         values=['是', '否'],
                         font=ctk.CTkFont(size=12),
-                        width=300
+                        width=500
                     )
                     entry.set(str(value) if value else '否')
                 elif field in ['下单日期', '合同评审日期', '合同签字日期', 'crm日期', '合同起始日期', '合同终止日期', '开票日期']:
@@ -157,7 +157,8 @@ class ContractDialog(ctk.CTkToplevel):
                     
                     entry = DateEntry(
                         date_frame,
-                        width=30,
+                        width=50,
+                        font=('Arial', 12),
                         background='darkblue',
                         foreground='white',
                         borderwidth=2,
@@ -173,14 +174,14 @@ class ContractDialog(ctk.CTkToplevel):
                         except:
                             pass
                 elif field in ['合同内容', '备注']:
-                    entry = ctk.CTkTextbox(field_frame, height=80, width=300)
+                    entry = ctk.CTkTextbox(field_frame, height=80, width=500)
                     if value:
                         entry.insert('1.0', str(value))
                 else:
                     entry = ctk.CTkEntry(
                         field_frame,
                         font=ctk.CTkFont(size=12),
-                        width=300
+                        width=500
                     )
                     entry.insert(0, str(value) if value else '')
                 
@@ -510,11 +511,11 @@ class CollectionRecordDialog(ctk.CTkToplevel):
                 else:
                     values = ['已承诺付款', '已回款', '继续跟进', '无回应', '坏账']
                 
-                entry = ctk.CTkComboBox(frame, values=values, width=300)
+                entry = ctk.CTkComboBox(frame, values=values, width=500)
                 entry.set(values[0])
                 entry.pack(side='left')
             else:
-                entry = ctk.CTkEntry(frame, width=300)
+                entry = ctk.CTkEntry(frame, width=500)
                 entry.pack(side='left')
             
             self.entries[field] = entry

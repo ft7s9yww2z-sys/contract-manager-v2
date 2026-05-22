@@ -45,7 +45,7 @@ class DatabaseManager:
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     序号 INTEGER,
                     下单日期 TEXT,
-                    合同编号 TEXT UNIQUE NOT NULL,
+                    合同编号 TEXT,
                     项目代码 TEXT,
                     是否变更 TEXT,
                     合同评审日期 TEXT,
@@ -184,8 +184,6 @@ class DatabaseManager:
             ))
             conn.commit()
             return True, "添加成功"
-        except sqlite3.IntegrityError:
-            return False, f"合同编号已存在: {data.get('合同编号')}"
         except Exception as e:
             return False, f"添加失败: {str(e)}"
         finally:
@@ -322,6 +320,54 @@ class DatabaseManager:
             创建时间=row['创建时间']
         )
     
+    def get_contract_by_id(self, contract_id: int) -> Optional[Contract]:
+        """根据 id 获取合同"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute('SELECT * FROM contracts WHERE id=?', (contract_id,))
+        row = cursor.fetchone()
+        conn.close()
+        
+        if not row:
+            return None
+        
+        return Contract(
+            id=row['id'],
+            序号=row['序号'],
+            下单日期=row['下单日期'],
+            合同编号=row['合同编号'],
+            项目代码=row['项目代码'],
+            是否变更=row['是否变更'],
+            合同评审日期=row['合同评审日期'],
+            合同签字日期=row['合同签字日期'],
+            crm日期=row['crm日期'],
+            合同名称=row['合同名称'],
+            对方单位名称=row['对方单位名称'],
+            区域=row['区域'],
+            销售负责人=row['销售负责人'],
+            参考金额=row['参考金额'],
+            合同额=row['合同额'],
+            联系人=row['联系人'],
+            联系电话=row['联系电话'],
+            合同内容=row['合同内容'],
+            到款情况=row['到款情况'],
+            合同起始日期=row['合同起始日期'],
+            合同终止日期=row['合同终止日期'],
+            开票日期=row['开票日期'],
+            开票金额=row['开票金额'],
+            开票余额=row['开票余额'],
+            到款金额=row['到款金额'],
+            合同余额=row['合同余额'],
+            应收账款=row['应收账款'],
+            备注=row['备注'],
+            项目预算=row['项目预算'],
+            设备数量=row['设备数量'],
+            催款状态=row['催款状态'],
+            催款日期=row['催款日期'],
+            催款备注=row['催款备注'],
+            创建时间=row['创建时间']
+        )
+    
     def update_contract(self, contract_no: str, data: Dict) -> bool:
         """更新合同"""
         conn = self.get_connection()
@@ -360,6 +406,24 @@ class DatabaseManager:
         try:
             cursor.execute('DELETE FROM collection_records WHERE 合同编号=?', (contract_no,))
             cursor.execute('DELETE FROM contracts WHERE 合同编号=?', (contract_no,))
+            conn.commit()
+            return cursor.rowcount > 0
+        finally:
+            conn.close()
+    
+    def delete_contract_by_id(self, contract_id: int) -> bool:
+        """根据 id 删除合同"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        try:
+            # 先获取合同编号，用于删除催款记录
+            cursor.execute('SELECT 合同编号 FROM contracts WHERE id=?', (contract_id,))
+            row = cursor.fetchone()
+            if row:
+                contract_no = row['合同编号']
+                cursor.execute('DELETE FROM collection_records WHERE 合同编号=?', (contract_no,))
+            
+            cursor.execute('DELETE FROM contracts WHERE id=?', (contract_id,))
             conn.commit()
             return cursor.rowcount > 0
         finally:
