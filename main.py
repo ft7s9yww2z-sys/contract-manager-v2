@@ -294,10 +294,6 @@ class ContractManagerApp(ctk.CTk):
         self.contract_tree.column('合同内容', width=150)
         self.contract_tree.column('备注', width=150)
         
-        for col, width in columns_config:
-            self.contract_tree.heading(col, text=col, command=lambda c=col: self._sort_contract_tree(c))
-            self.contract_tree.column(col, width=width, anchor='center')
-        
         # 滚动条
         scrollbar = ttk.Scrollbar(table_frame, orient='vertical', command=self.contract_tree.yview)
         self.contract_tree.configure(yscrollcommand=scrollbar.set)
