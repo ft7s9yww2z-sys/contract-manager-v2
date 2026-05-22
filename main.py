@@ -82,10 +82,25 @@ class ContractManagerApp(ctk.CTk):
         self.contracts_cache: List[Contract] = []
         self.invoices_cache: List[Invoice] = []
         
-        # 分页相关
+        # 分页相关 - 合同列表
         self.current_page = 1
         self.page_size = 50
         self.total_pages = 1
+        
+        # 发票列表分页
+        self.invoice_page = 1
+        self.invoice_page_size = 50
+        self.invoice_total_pages = 1
+        
+        # 预警列表分页
+        self.warning_page = 1
+        self.warning_page_size = 50
+        self.warning_total_pages = 1
+        
+        # 应收账款列表分页
+        self.receivable_page = 1
+        self.receivable_page_size = 50
+        self.receivable_total_pages = 1
         
         # 区域和销售负责人列表
         self.regions = ['北方区', '西北区', '华东区', '华南区', '国际部', '其他']
@@ -545,6 +560,31 @@ class ContractManagerApp(ctk.CTk):
         
         self.invoice_tree.bind('<Double-1>', lambda e: self._edit_invoice())
         
+        # 分页控件
+        page_frame = ctk.CTkFrame(self.content_area, fg_color='white', corner_radius=10, height=50)
+        page_frame.pack(fill='x', padx=20, pady=(0, 20))
+        page_frame.pack_propagate(False)
+        
+        # 左侧统计信息
+        self.invoice_stats_label = ctk.CTkLabel(
+            page_frame,
+            text="共 0 条记录",
+            font=ctk.CTkFont(size=12),
+            text_color='#7f8c8d'
+        )
+        self.invoice_stats_label.pack(side='left', pady=13, padx=20)
+        
+        # 右侧分页控件
+        invoice_page_frame = ctk.CTkFrame(page_frame, fg_color='transparent')
+        invoice_page_frame.pack(side='right', pady=10, padx=20)
+        
+        ModernButton(invoice_page_frame, "上一页", command=self._prev_invoice_page, style='secondary').pack(side='left', padx=5)
+        
+        self.invoice_page_label = ctk.CTkLabel(invoice_page_frame, text="第 1/1 页", font=ctk.CTkFont(size=12))
+        self.invoice_page_label.pack(side='left', padx=10)
+        
+        ModernButton(invoice_page_frame, "下一页", command=self._next_invoice_page, style='secondary').pack(side='left', padx=5)
+        
         # 加载数据
         self._update_invoices_table()
     
@@ -732,6 +772,34 @@ class ContractManagerApp(ctk.CTk):
         self.warning_tree.pack(side='left', fill='both', expand=True)
         scrollbar.pack(side='right', fill='y')
         
+        # 分页控件
+        page_frame = ctk.CTkFrame(self.content_area, fg_color='white', corner_radius=10, height=50)
+        page_frame.pack(fill='x', padx=20, pady=(0, 20))
+        page_frame.pack_propagate(False)
+        
+        # 左侧统计信息
+        self.warning_stats_label = ctk.CTkLabel(
+            page_frame,
+            text="共 0 条记录",
+            font=ctk.CTkFont(size=12),
+            text_color='#7f8c8d'
+        )
+        self.warning_stats_label.pack(side='left', pady=13, padx=20)
+        
+        # 右侧分页控件
+        warning_page_frame = ctk.CTkFrame(page_frame, fg_color='transparent')
+        warning_page_frame.pack(side='right', pady=10, padx=20)
+        
+        ModernButton(warning_page_frame, "上一页", command=self._prev_warning_page, style='secondary').pack(side='left', padx=5)
+        
+        self.warning_page_label = ctk.CTkLabel(warning_page_frame, text="第 1/1 页", font=ctk.CTkFont(size=12))
+        self.warning_page_label.pack(side='left', padx=10)
+        
+        ModernButton(warning_page_frame, "下一页", command=self._next_warning_page, style='secondary').pack(side='left', padx=5)
+        
+        # 保存预警数据到缓存
+        self.warning_cache = warning_data
+        
         # 加载数据
         self._update_warnings_table(warning_data)
     
@@ -753,14 +821,34 @@ class ContractManagerApp(ctk.CTk):
                 or search_text in (w['contract'].合同名称 or '').lower()
             ]
         
+        # 保存过滤后的数据
+        self.warning_cache = warning_data
+        self.warning_page = 1  # 重置页码
         self._update_warnings_table(warning_data)
+    
+    def _prev_warning_page(self):
+        """预警列表上一页"""
+        if self.warning_page > 1:
+            self.warning_page -= 1
+            self._update_warnings_table(self.warning_cache)
+    
+    def _next_warning_page(self):
+        """预警列表下一页"""
+        if self.warning_page < self.warning_total_pages:
+            self.warning_page += 1
+            self._update_warnings_table(self.warning_cache)
     
     def _update_warnings_table(self, warning_data: List[Dict]):
         """更新预警表格"""
         for item in self.warning_tree.get_children():
             self.warning_tree.delete(item)
         
-        for item in warning_data:
+        # 应用分页
+        start_idx = (self.warning_page - 1) * self.warning_page_size
+        end_idx = start_idx + self.warning_page_size
+        page_data = warning_data[start_idx:end_idx]
+        
+        for item in page_data:
             contract = item['contract']
             days = item['days']
             level = item['level']
@@ -786,6 +874,14 @@ class ContractManagerApp(ctk.CTk):
                 safe_format_money(contract.到款金额),
                 safe_format_money(contract.应收账款)
             ), tags=(tag,))
+        
+        # 更新分页信息
+        total = len(warning_data)
+        self.warning_total_pages = max(1, (total + self.warning_page_size - 1) // self.warning_page_size)
+        
+        if hasattr(self, 'warning_stats_label'):
+            self.warning_stats_label.configure(text=f"共 {total} 条记录")
+            self.warning_page_label.configure(text=f"第 {self.warning_page}/{self.warning_total_pages} 页")
     
     def _export_warnings(self):
         """导出预警列表"""
@@ -900,6 +996,31 @@ class ContractManagerApp(ctk.CTk):
         self.receivable_tree.bind('<Double-1>', lambda e: self._show_collection_dialog())
         self.receivable_tree.bind('<Button-3>', self._show_receivable_context_menu)
         
+        # 分页控件
+        page_frame = ctk.CTkFrame(self.content_area, fg_color='white', corner_radius=10, height=50)
+        page_frame.pack(fill='x', padx=20, pady=(0, 20))
+        page_frame.pack_propagate(False)
+        
+        # 左侧统计信息
+        self.receivable_stats_label = ctk.CTkLabel(
+            page_frame,
+            text="共 0 条记录",
+            font=ctk.CTkFont(size=12),
+            text_color='#7f8c8d'
+        )
+        self.receivable_stats_label.pack(side='left', pady=13, padx=20)
+        
+        # 右侧分页控件
+        receivable_page_frame = ctk.CTkFrame(page_frame, fg_color='transparent')
+        receivable_page_frame.pack(side='right', pady=10, padx=20)
+        
+        ModernButton(receivable_page_frame, "上一页", command=self._prev_receivable_page, style='secondary').pack(side='left', padx=5)
+        
+        self.receivable_page_label = ctk.CTkLabel(receivable_page_frame, text="第 1/1 页", font=ctk.CTkFont(size=12))
+        self.receivable_page_label.pack(side='left', padx=10)
+        
+        ModernButton(receivable_page_frame, "下一页", command=self._next_receivable_page, style='secondary').pack(side='left', padx=5)
+        
         # 加载数据
         self._update_receivables_table()
     
@@ -908,8 +1029,15 @@ class ContractManagerApp(ctk.CTk):
         for item in self.receivable_tree.get_children():
             self.receivable_tree.delete(item)
         
-        for contract in self.contracts_cache:
-            if contract.应收账款 and contract.应收账款 > 0:
+        # 筛选有应收账款的合同
+        receivable_contracts = [c for c in self.contracts_cache if c.应收账款 and c.应收账款 > 0]
+        
+        # 应用分页
+        start_idx = (self.receivable_page - 1) * self.receivable_page_size
+        end_idx = start_idx + self.receivable_page_size
+        page_contracts = receivable_contracts[start_idx:end_idx]
+        
+        for contract in page_contracts:
                 self.receivable_tree.insert('', 'end', values=(
                     contract.合同编号,
                     contract.对方单位名称 or '',
@@ -919,6 +1047,26 @@ class ContractManagerApp(ctk.CTk):
                     contract.销售负责人 or '',
                     contract.催款状态 or '未催款'
                 ))
+        
+        # 更新分页信息
+        total = len(receivable_contracts)
+        self.receivable_total_pages = max(1, (total + self.receivable_page_size - 1) // self.receivable_page_size)
+        
+        if hasattr(self, 'receivable_stats_label'):
+            self.receivable_stats_label.configure(text=f"共 {total} 条记录")
+            self.receivable_page_label.configure(text=f"第 {self.receivable_page}/{self.receivable_total_pages} 页")
+    
+    def _prev_receivable_page(self):
+        """应收账款列表上一页"""
+        if self.receivable_page > 1:
+            self.receivable_page -= 1
+            self._update_receivables_table()
+    
+    def _next_receivable_page(self):
+        """应收账款列表下一页"""
+        if self.receivable_page < self.receivable_total_pages:
+            self.receivable_page += 1
+            self._update_receivables_table()
     
     def _show_collection_dialog(self):
         """显示催款记录对话框"""
@@ -1094,11 +1242,45 @@ class ContractManagerApp(ctk.CTk):
         fig.update_yaxes(title_text='金额（元）', row=1, col=2)
         
         # 保存图表
-        chart_file = os.path.join(os.path.dirname(__file__), 'yearly_stats_chart.html')
-        fig.write_html(chart_file)
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.html', mode='w', encoding='utf-8') as f:
+            fig.write_html(f.name)
+            html_path = f.name
         
-        # 显示图表
-        self._show_chart_in_window(charts_frame, chart_file)
+        # 显示按钮
+        ctk.CTkLabel(
+            charts_frame,
+            text="📊 年度统计分析",
+            font=ctk.CTkFont(size=16, weight='bold')
+        ).pack(pady=20)
+        
+        ModernButton(
+            charts_frame,
+            text="查看图表",
+            command=lambda: webbrowser.open(f'file://{html_path}'),
+            style='primary'
+        ).pack(pady=10)
+        
+        # 显示统计摘要
+        summary_frame = ctk.CTkFrame(charts_frame, fg_color='white', corner_radius=10)
+        summary_frame.pack(fill='x', padx=20, pady=20)
+        
+        for stat in stats:
+            row_frame = ctk.CTkFrame(summary_frame, fg_color='transparent')
+            row_frame.pack(fill='x', padx=10, pady=5)
+            
+            ctk.CTkLabel(
+                row_frame,
+                text=f"{stat['year']}年",
+                font=ctk.CTkFont(size=13, weight='bold'),
+                width=100
+            ).pack(side='left')
+            
+            ctk.CTkLabel(
+                row_frame,
+                text=f"合同数: {stat['count']}  合同额: ¥{stat['total_amount']:,.0f}  到款: ¥{stat['received_amount']:,.0f}",
+                font=ctk.CTkFont(size=13),
+                text_color='#7f8c8d'
+            ).pack(side='left', padx=10)
     
     def _show_region_stats_tab(self):
         """显示区域统计标签页"""
@@ -1513,7 +1695,12 @@ class ContractManagerApp(ctk.CTk):
             for item in self.invoice_tree.get_children():
                 self.invoice_tree.delete(item)
             
-            for invoice in self.invoices_cache:
+            # 应用分页
+            start_idx = (self.invoice_page - 1) * self.invoice_page_size
+            end_idx = start_idx + self.invoice_page_size
+            page_invoices = self.invoices_cache[start_idx:end_idx]
+            
+            for invoice in page_invoices:
                 self.invoice_tree.insert('', 'end', values=(
                     invoice.开票日期 or '',
                     invoice.合同号,
@@ -1626,6 +1813,26 @@ class ContractManagerApp(ctk.CTk):
                     contract.销售负责人 or '',
                     contract.催款状态 or '未催款'
                 ))
+        
+        # 更新分页信息
+        total = len(receivable_contracts)
+        self.receivable_total_pages = max(1, (total + self.receivable_page_size - 1) // self.receivable_page_size)
+        
+        if hasattr(self, 'receivable_stats_label'):
+            self.receivable_stats_label.configure(text=f"共 {total} 条记录")
+            self.receivable_page_label.configure(text=f"第 {self.receivable_page}/{self.receivable_total_pages} 页")
+    
+    def _prev_receivable_page(self):
+        """应收账款列表上一页"""
+        if self.receivable_page > 1:
+            self.receivable_page -= 1
+            self._update_receivables_table()
+    
+    def _next_receivable_page(self):
+        """应收账款列表下一页"""
+        if self.receivable_page < self.receivable_total_pages:
+            self.receivable_page += 1
+            self._update_receivables_table()
 
 def main():
     """主函数"""
